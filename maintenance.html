@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Down for Maintenance</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0c0c0e;
+      --surface: #141418;
+      --border: #252530;
+      --accent: #e8d5a3;
+      --accent-dim: #a08c5a;
+      --text: #f0ece0;
+      --text-muted: #6b6755;
+      --glow: rgba(232, 213, 163, 0.12);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      overflow: hidden;
+    }
+
+    /* Grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 100;
+      opacity: 0.6;
+    }
+
+    /* Radial glow from center */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(232, 213, 163, 0.06) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .scene {
+      position: relative;
+      z-index: 1;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 1fr auto;
+      padding: 48px;
+    }
+
+    /* Top bar */
+    .topbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      padding: 24px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      z-index: 10;
+    }
+
+    .topbar-label {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent-dim);
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: 100px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* Main content */
+    .main {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      max-width: 680px;
+      padding-top: 80px;
+    }
+
+    .eyebrow {
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--accent-dim);
+      margin-bottom: 32px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.2s forwards;
+    }
+
+    .headline {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(52px, 8vw, 88px);
+      line-height: 1.0;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 12px;
+      opacity: 0;
+      animation: fadeUp 0.9s ease 0.35s forwards;
+    }
+
+    .headline em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .divider {
+      width: 48px;
+      height: 1px;
+      background: var(--border);
+      margin: 36px 0;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.5s forwards;
+    }
+
+    .body-text {
+      font-size: 13px;
+      line-height: 1.9;
+      color: var(--text-muted);
+      max-width: 460px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.65s forwards;
+    }
+
+    .body-text strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* Progress track */
+    .progress-wrap {
+      margin-top: 48px;
+      width: 100%;
+      max-width: 400px;
+      opacity: 0;
+      animation: fadeUp 0.8s ease 0.8s forwards;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .progress-track {
+      height: 1px;
+      background: var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+      width: 0%;
+      animation: fillBar 2.5s cubic-bezier(0.4, 0, 0.2, 1) 1.2s forwards;
+    }
+
+    @keyframes fillBar {
+      to { width: 73%; }
+    }
+
+    /* Bottom bar */
+    .bottombar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      opacity: 0;
+      animation: fadeUp 0.8s ease 1s forwards;
+    }
+
+    .time-block {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      line-height: 1.8;
+    }
+
+    .time-block span {
+      display: block;
+      color: var(--accent-dim);
+    }
+
+    .ascii-art {
+      font-size: 9px;
+      line-height: 1.4;
+      color: var(--border);
+      text-align: right;
+      letter-spacing: 0.05em;
+      user-select: none;
+    }
+
+    /* Decorative vertical line */
+    .vline {
+      position: fixed;
+      right: 140px;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--border);
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    .vline-right {
+      right: 48px;
+    }
+
+    /* Grid dots */
+    .grid-dots {
+      position: fixed;
+      top: 80px;
+      right: 60px;
+      display: grid;
+      grid-template-columns: repeat(6, 10px);
+      grid-template-rows: repeat(6, 10px);
+      gap: 10px;
+      opacity: 0;
+      animation: fadeIn 1s ease 1.4s forwards;
+    }
+
+    .grid-dots span {
+      width: 2px;
+      height: 2px;
+      border-radius: 50%;
+      background: var(--border);
+      display: block;
+    }
+
+    /* Floating number */
+    .float-num {
+      position: fixed;
+      right: 58px;
+      bottom: 54px;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: var(--border);
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      opacity: 0;
+      animation: fadeIn 1s ease 1.4s forwards;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    /* Clock */
+    #clock {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="vline"></div>
+  <div class="vline vline-right"></div>
+
+  <div class="grid-dots" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
+
+  <div class="float-num" aria-hidden="true">01 / MAINTENANCE</div>
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <span class="topbar-label">kailamayho.com</span>
+    <div class="status-pill">
+      <span class="dot"></span>
+      In Progress
+    </div>
+  </header>
+
+  <div class="scene">
+    <main class="main">
+      <p class="eyebrow">Scheduled maintenance</p>
+
+      <h1 class="headline">
+        Back<br/><em>shortly.</em>
+      </h1>
+
+      <div class="divider"></div>
+
+      <p class="body-text">
+        I'm currently making some <strong>improvements</strong> to this site —
+        new work, better performance, a few things I've been meaning to fix.
+        Everything will be back up soon. Thanks for your patience.
+      </p>
+
+      <div class="progress-wrap">
+        <div class="progress-meta">
+          <span>Build progress</span>
+          <span id="pct">73%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="bottombar">
+      <div class="time-block">
+        Current time
+        <span id="clock">--:--:--</span>
+      </div>
+      <div class="time-block" style="text-align:right;">
+        Est. downtime
+        <span>~1 week</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('clock').textContent = `${h}:${m}:${s}`;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+  </script>
+</body>
+</html>
